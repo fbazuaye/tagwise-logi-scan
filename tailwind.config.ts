@@ -52,6 +52,14 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				logistics: {
+					primary: 'hsl(var(--logistics-primary))',
+					secondary: 'hsl(var(--logistics-secondary))',
+					accent: 'hsl(var(--logistics-accent))',
+					success: 'hsl(var(--logistics-success))',
+					warning: 'hsl(var(--logistics-warning))',
+					danger: 'hsl(var(--logistics-danger))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -67,6 +75,14 @@ export default {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
+			},
+			backgroundImage: {
+				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-card': 'var(--gradient-card)'
+			},
+			boxShadow: {
+				'logistics': 'var(--shadow-logistics)',
+				'card': 'var(--shadow-card)'
 			},
 			keyframes: {
 				'accordion-down': {
