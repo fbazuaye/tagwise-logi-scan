@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Eye, Wifi, RefreshCw, Database } from "lucide-react";
 import { LogitechHeader } from "@/components/LogitechHeader";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 interface TagData {
   uid: string;
@@ -21,49 +23,113 @@ interface TagData {
 const ReadTag = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [tagData, setTagData] = useState<TagData | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if user is authenticated
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to read NFC tags",
+          variant: "destructive"
+        });
+        navigate("/");
+        return;
+      }
+      setUser(user);
+    };
+
+    checkUser();
+  }, [navigate, toast]);
 
   const handleScanTag = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to read NFC tags",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsScanning(true);
-    
-    // Simulate NFC reading process
-    setTimeout(() => {
-      setIsScanning(false);
-      const mockData: TagData = {
-        uid: "04:A3:2F:12:B8:7C:80",
-        assetId: "AST-001234",
-        shipmentId: "SHP-567890",
-        containerId: "CONT-789012",
-        description: "Industrial Equipment - Compressor Unit",
-        location: "Warehouse A, Bay 5",
-        timestamp: new Date().toLocaleString(),
-        tagType: "NTAG213",
-        memorySize: "180 bytes"
+
+    try {
+      // In a real NFC app, you'd get the tag UID from the NFC hardware
+      // For demo, we'll simulate reading the most recent tag
+      const { data: recentTag, error } = await supabase
+        .from('tags')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!recentTag) {
+        toast({
+          title: "No Tags Found",
+          description: "No NFC tags found in database. Write a tag first.",
+          variant: "destructive"
+        });
+        setIsScanning(false);
+        return;
+      }
+
+      // Update last_scanned timestamp
+      await supabase
+        .from('tags')
+        .update({ last_scanned: new Date().toISOString() })
+        .eq('id', recentTag.id);
+
+      // Log the read operation
+      await supabase
+        .from('nfc_logs')
+        .insert({
+          tag_uid: recentTag.tag_uid,
+          action_type: 'read',
+          data: recentTag.written_data,
+          user_id: user.id
+        });
+
+      // Format data for display
+      const writtenData = recentTag.written_data as any;
+      const formattedData: TagData = {
+        uid: recentTag.tag_uid,
+        assetId: writtenData?.assetId || '',
+        shipmentId: writtenData?.shipmentId || '',
+        containerId: writtenData?.containerId || '',
+        description: writtenData?.description || '',
+        location: writtenData?.location || '',
+        timestamp: new Date(recentTag.last_scanned || recentTag.created_at).toLocaleString(),
+        tagType: "MIFARE Classic 1K",
+        memorySize: "1024 bytes"
       };
+
+      setTagData(formattedData);
       
-      setTagData(mockData);
       toast({
         title: "Tag Read Successfully",
-        description: "NFC tag data has been retrieved",
+        description: `NFC tag ${recentTag.tag_uid} data retrieved`,
       });
-    }, 2000);
+
+    } catch (error) {
+      console.error('Error reading tag:', error);
+      toast({
+        title: "Read Failed",
+        description: "Failed to read NFC tag. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsScanning(false);
+    }
   };
 
-  const handleSyncToSupabase = async () => {
-    if (!tagData) return;
-    
-    setIsSyncing(true);
-    
-    // Simulate sync to Supabase
-    setTimeout(() => {
-      setIsSyncing(false);
-      toast({
-        title: "Synced to Database",
-        description: "Tag data has been saved to Supabase",
-      });
-    }, 1500);
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -192,27 +258,8 @@ const ReadTag = () => {
 
             <div className="flex space-x-3">
               <Button 
-                onClick={handleSyncToSupabase}
-                disabled={isSyncing}
-                className="flex-1 bg-logistics-primary hover:bg-logistics-primary/90 text-white"
-              >
-                {isSyncing ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Syncing...
-                  </>
-                ) : (
-                  <>
-                    <Database className="h-4 w-4 mr-2" />
-                    Sync to DB
-                  </>
-                )}
-              </Button>
-              
-              <Button 
                 onClick={() => setTagData(null)}
-                variant="outline"
-                className="border-logistics-primary text-logistics-primary hover:bg-logistics-primary/10"
+                className="flex-1 bg-logistics-primary hover:bg-logistics-primary/90 text-white"
               >
                 <Eye className="h-4 w-4 mr-2" />
                 Scan Again

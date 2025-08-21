@@ -91,6 +91,39 @@ export type Database = {
           },
         ]
       }
+      assets: {
+        Row: {
+          asset_id: string
+          created_at: string
+          description: string | null
+          id: string
+          location: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           embedding: string | null
@@ -208,6 +241,33 @@ export type Database = {
         }
         Relationships: []
       }
+      nfc_logs: {
+        Row: {
+          action_type: string
+          created_at: string
+          data: Json | null
+          id: string
+          tag_uid: string | null
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          data?: Json | null
+          id?: string
+          tag_uid?: string | null
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          data?: Json | null
+          id?: string
+          tag_uid?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -310,6 +370,45 @@ export type Database = {
           style?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      tags: {
+        Row: {
+          asset_id: string | null
+          container_id: string | null
+          created_at: string
+          id: string
+          last_scanned: string | null
+          shipment_id: string | null
+          tag_uid: string
+          updated_at: string
+          user_id: string
+          written_data: Json
+        }
+        Insert: {
+          asset_id?: string | null
+          container_id?: string | null
+          created_at?: string
+          id?: string
+          last_scanned?: string | null
+          shipment_id?: string | null
+          tag_uid: string
+          updated_at?: string
+          user_id: string
+          written_data: Json
+        }
+        Update: {
+          asset_id?: string | null
+          container_id?: string | null
+          created_at?: string
+          id?: string
+          last_scanned?: string | null
+          shipment_id?: string | null
+          tag_uid?: string
+          updated_at?: string
+          user_id?: string
+          written_data?: Json
         }
         Relationships: []
       }

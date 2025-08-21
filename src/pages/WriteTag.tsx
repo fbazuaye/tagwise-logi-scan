@@ -1,13 +1,15 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Wifi, AlertCircle, CheckCircle } from "lucide-react";
+import { ArrowLeft, Wifi, AlertCircle } from "lucide-react";
 import { LogitechHeader } from "@/components/LogitechHeader";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 const WriteTag = () => {
   const [formData, setFormData] = useState({
@@ -18,16 +20,46 @@ const WriteTag = () => {
     location: ""
   });
   const [isWriting, setIsWriting] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if user is authenticated
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to write NFC tags",
+          variant: "destructive"
+        });
+        navigate("/");
+        return;
+      }
+      setUser(user);
+    };
+
+    checkUser();
+  }, [navigate, toast]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleWriteTag = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to write NFC tags",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!formData.assetId && !formData.shipmentId && !formData.containerId) {
       toast({
-        title: "Missing Information",
+        title: "Missing Information", 
         description: "Please provide at least one ID (Asset, Shipment, or Container)",
         variant: "destructive"
       });
@@ -35,13 +67,65 @@ const WriteTag = () => {
     }
 
     setIsWriting(true);
-    
-    // Simulate NFC writing process
-    setTimeout(() => {
-      setIsWriting(false);
+
+    try {
+      // Generate a unique tag UID (in real app this would come from NFC hardware)
+      const tagUid = `NFC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Prepare tag data
+      const tagData = {
+        tag_uid: tagUid,
+        asset_id: formData.assetId || null,
+        shipment_id: formData.shipmentId || null, 
+        container_id: formData.containerId || null,
+        written_data: {
+          assetId: formData.assetId,
+          shipmentId: formData.shipmentId,
+          containerId: formData.containerId,
+          description: formData.description,
+          location: formData.location,
+          writtenAt: new Date().toISOString()
+        },
+        user_id: user.id,
+        last_scanned: new Date().toISOString()
+      };
+
+      // Save tag to database
+      const { error: tagError } = await supabase
+        .from('tags')
+        .insert(tagData);
+
+      if (tagError) throw tagError;
+
+      // Log the write operation
+      const { error: logError } = await supabase
+        .from('nfc_logs')
+        .insert({
+          tag_uid: tagUid,
+          action_type: 'write',
+          data: tagData.written_data,
+          user_id: user.id
+        });
+
+      if (logError) throw logError;
+
+      // Create/update asset if assetId is provided
+      if (formData.assetId) {
+        const { error: assetError } = await supabase
+          .from('assets')
+          .upsert({
+            asset_id: formData.assetId,
+            description: formData.description,
+            location: formData.location,
+            user_id: user.id
+          });
+
+        if (assetError) throw assetError;
+      }
+
       toast({
         title: "Tag Written Successfully",
-        description: "NFC tag has been programmed with asset data",
+        description: `NFC tag ${tagUid} has been programmed and saved to database`,
       });
       
       // Reset form
@@ -52,7 +136,17 @@ const WriteTag = () => {
         description: "",
         location: ""
       });
-    }, 2000);
+
+    } catch (error) {
+      console.error('Error writing tag:', error);
+      toast({
+        title: "Write Failed",
+        description: "Failed to write NFC tag. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsWriting(false);
+    }
   };
 
   return (
