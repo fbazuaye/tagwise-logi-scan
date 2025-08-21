@@ -217,7 +217,7 @@ export type Database = {
           scope: string | null
           token_type: string | null
           updated_at: string
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           access_token_encrypted?: string | null
@@ -227,7 +227,7 @@ export type Database = {
           scope?: string | null
           token_type?: string | null
           updated_at?: string
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           access_token_encrypted?: string | null
@@ -237,7 +237,7 @@ export type Database = {
           scope?: string | null
           token_type?: string | null
           updated_at?: string
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
