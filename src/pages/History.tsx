@@ -8,36 +8,45 @@ import { ArrowLeft, Search, Wifi, Eye, Edit } from "lucide-react";
 import { LogitechHeader } from "@/components/LogitechHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import type { User } from "@supabase/supabase-js";
+import { useAuth } from "@/hooks/useAuth";
 
 
 const History = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is authenticated
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to view history",
-          variant: "destructive"
-        });
-        navigate("/");
-        return;
-      }
-      setUser(user);
-      fetchHistory(user.id);
-    };
+    // Redirect if not authenticated
+    if (!authLoading && !user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to view history",
+        variant: "destructive"
+      });
+      navigate("/auth");
+      return;
+    }
 
-    checkUser();
-  }, [navigate, toast]);
+    if (user) {
+      fetchHistory(user.id);
+    }
+  }, [user, authLoading, navigate, toast]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-logistics-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   const fetchHistory = async (userId: string) => {
     try {

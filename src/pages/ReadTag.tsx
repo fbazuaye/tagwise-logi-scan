@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Eye, Wifi, RefreshCw, Database } from "lucide-react";
 import { LogitechHeader } from "@/components/LogitechHeader";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import type { User } from "@supabase/supabase-js";
 
 interface TagData {
   uid: string;
@@ -23,28 +23,33 @@ interface TagData {
 const ReadTag = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [tagData, setTagData] = useState<TagData | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const { user, loading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is authenticated
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to read NFC tags",
-          variant: "destructive"
-        });
-        navigate("/");
-        return;
-      }
-      setUser(user);
-    };
+    // Redirect if not authenticated
+    if (!loading && !user) {
+      toast({
+        title: "Authentication Required", 
+        description: "Please log in to read NFC tags",
+        variant: "destructive"
+      });
+      navigate("/auth");
+    }
+  }, [user, loading, navigate, toast]);
 
-    checkUser();
-  }, [navigate, toast]);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-logistics-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   const handleScanTag = async () => {
     if (!user) {
