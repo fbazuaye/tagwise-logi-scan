@@ -142,7 +142,7 @@ const Index = () => {
 
         <div className="mt-8 text-center">
           <p className="text-xs text-muted-foreground">
-            Ready to scan? Ensure NFC is enabled on your device.
+            Designed By Frank Bazuaye. Powered By LiveGig Ltd
           </p>
         </div>
       </main>
